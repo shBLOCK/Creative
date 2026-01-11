@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": false,
+        "skipLibCheck": true,
+        "target": "ES2024",
+        "module": "None",
+        "outDir": "./dist",
+        "typeRoots": ["../../node_modules", "../../"],
+        "types": ["p5/types/global.d.ts", "global.d.ts"]
+    },
+    "include": [
+        "sketch.ts"
+    ]
+}

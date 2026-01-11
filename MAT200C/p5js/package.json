@@ -1,0 +1,16 @@
+{
+    "name": "p5js-sketches",
+    "version": "1.0.0",
+    "description": "",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "p5": "^2.2.0-rc.5",
+        "tone": "^15.1.22"
+    },
+    "devDependencies": {
+        "typescript": "^5.9.3"
+    },
+    "private": true
+}
