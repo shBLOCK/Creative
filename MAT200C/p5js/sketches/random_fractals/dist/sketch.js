@@ -236,7 +236,7 @@ function draw() {
         pop();
     }
     let mix = cosSmooth(cosSmooth(min(timeAcc, 1.0)));
-    mix = min(max(mix, 0.00001), 0.99999);
+    // mix = min(max(mix, 0.00001), 0.99999);
     drawFractal(mix);
     let wasGenerationFrame = isGenerationFrame;
     if (timeAcc > 1.1) {
@@ -279,7 +279,7 @@ function draw() {
                 console.log("Transition middle not good.");
                 continue;
             }
-            fractalFrameBuffer.draw(() => drawFractal(0.999));
+            fractalFrameBuffer.draw(() => drawFractal(1.0));
             if (!isGoodFractal()) {
                 console.log("Transition end not good.");
                 continue;
