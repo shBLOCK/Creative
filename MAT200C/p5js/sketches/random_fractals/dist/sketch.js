@@ -291,10 +291,7 @@ function draw() {
         isGenerationFrame = false;
     }
     if (!wasGenerationFrame) {
-        // if (mouseButton.left)
-        if (deltaTime > 20)
-            console.log("iodjsis", deltaTime);
-        timeAcc += min(deltaTime / 1e3, 1 / 60) * 1.0;
+        timeAcc += min(deltaTime / 1e3, 1 / 60) * 0.5;
     }
 }
 function windowResized() {
