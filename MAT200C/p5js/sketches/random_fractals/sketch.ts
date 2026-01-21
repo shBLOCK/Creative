@@ -252,12 +252,12 @@ function draw() {
     }
 
     let mix = cosSmooth(cosSmooth(min(timeAcc, 1.0)));
-    // mix = min(max(mix, 0.00001), 0.99999);
+    mix = min(max(mix, 1e-7), 1.0 - 1e-7);
     drawFractal(mix);
 
     let wasGenerationFrame = isGenerationFrame;
 
-    if (timeAcc > 1.1) {
+    if (timeAcc > 1.0) {
         isGenerationFrame = true;
         timeAcc = 0.0;
         lastFractalFunc = fractalFunc;
@@ -287,7 +287,7 @@ function draw() {
         }
 
         while (true) {
-            fractalFunc = genRandomFractalFunc(0.8);
+            fractalFunc = genRandomFractalFunc(0.85);
             console.log(fractalFunc);
             fractalShader = baseFractalShader.modify({
                 "vec2 fractalA": `(vec2 z, vec2 c) { return ${lastFractalFunc}; }`,
