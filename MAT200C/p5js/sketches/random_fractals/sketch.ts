@@ -210,6 +210,8 @@ async function setup() {
         antialias: false,
         density: 1,
         textureFiltering: "nearest",
+        width: 256,
+        height: 256,
     });
 
     baseFractalShader = createShader(VERT_SOURCE, FRAG_SOURCE, {
@@ -237,24 +239,26 @@ function cosSmooth(x: number): number {
 let isGenerationFrame = false;
 
 function draw() {
-    function drawFractal(mix: number) {
+    function drawFractal(framebuffer: p5.Framebuffer | null, mix: number) {
         push();
         fractalShader.setUniform("uFractalABMix", mix);
         shader(fractalShader);
         blendMode(REPLACE);
-        let uv = createVector(windowWidth / windowHeight, 1.0);
+        const width = framebuffer === null ? windowWidth : framebuffer.width;
+        const height = framebuffer === null ? windowHeight : framebuffer.height;
+        let uv = createVector(width / height, 1.0);
         beginShape();
-        vertex(-windowWidth / 2, -windowHeight / 2, 0, -uv.x, -uv.y);
-        vertex(+windowWidth / 2, -windowHeight / 2, 0, +uv.x, -uv.y);
-        vertex(+windowWidth / 2, +windowHeight / 2, 0, +uv.x, +uv.y);
-        vertex(-windowWidth / 2, +windowHeight / 2, 0, -uv.x, +uv.y);
+        vertex(-width / 2, -height / 2, 0, -uv.x, -uv.y);
+        vertex(+width / 2, -height / 2, 0, +uv.x, -uv.y);
+        vertex(+width / 2, +height / 2, 0, +uv.x, +uv.y);
+        vertex(-width / 2, +height / 2, 0, -uv.x, +uv.y);
         endShape(CLOSE);
         pop();
     }
 
     let mix = cosSmooth(cosSmooth(min(timeAcc, 1.0)));
     // mix = min(max(mix, 1e-9), 1.0 - 1e-9);
-    drawFractal(mix);
+    drawFractal(null, mix);
 
     push();
     fill(255, 255, 0);
@@ -275,23 +279,18 @@ function draw() {
         }
 
         function isGoodFractal(): boolean {
-            // pixel (0, 0) doesn't work for some reason
-            let firstPixel = fractalFrameBuffer.get(1, 1);
-            if (isInfOrNanPixel(firstPixel))
-                return false;
-            let isBoring = true;
-            for (let i = 0; i < 10; i++) {
+            let pixelISet = new Set();
+            for (let i = 0; i < 30; i++) {
                 let pixel = fractalFrameBuffer.get(
-                    Math.floor(random(1, fractalFrameBuffer.width - 1)),
-                    Math.floor(random(1, fractalFrameBuffer.height - 1))
+                    Math.floor(random(1, fractalFrameBuffer.width - 2)),
+                    Math.floor(random(1, fractalFrameBuffer.height - 2))
                 );
-                if (!arrEqual(pixel, firstPixel)) {
-                    isBoring = false;
-                }
+                let pixelI = pixel[0] | pixel[1] << 8 | pixel[2] << 16 | pixel[3] << 24;
+                pixelISet.add(pixelI);
                 if (isInfOrNanPixel(pixel))
                     return false;
             }
-            return !isBoring;
+            return pixelISet.size > 2;
         }
 
         while (true) {
@@ -307,12 +306,12 @@ function draw() {
             //     console.log("Transition start not good.");
             //     continue;
             // }
-            fractalFrameBuffer.draw(() => drawFractal(0.5));
+            fractalFrameBuffer.draw(() => drawFractal(fractalFrameBuffer, 0.5));
             if (!isGoodFractal()) {
                 console.log("Transition middle not good.");
                 continue;
             }
-            fractalFrameBuffer.draw(() => drawFractal(1.0));
+            fractalFrameBuffer.draw(() => drawFractal(fractalFrameBuffer, 1.0));
             if (!isGoodFractal()) {
                 console.log("Transition end not good.");
                 continue;
