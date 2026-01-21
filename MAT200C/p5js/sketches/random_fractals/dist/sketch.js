@@ -191,6 +191,7 @@ let lastFractalFunc = "mandelbrot(z, c)";
 let fractalFunc = "burning_ship(z, c)";
 async function setup() {
     createCanvas(windowWidth, windowHeight, WEBGL);
+    textFont(await loadFont("Monocraft.otf"));
     fractalFrameBuffer = createFramebuffer({
         format: "unsigned-byte",
         channels: "rgba",
@@ -236,8 +237,14 @@ function draw() {
         pop();
     }
     let mix = cosSmooth(cosSmooth(min(timeAcc, 1.0)));
-    mix = min(max(mix, 1e-7), 1.0 - 1e-7);
+    // mix = min(max(mix, 1e-9), 1.0 - 1e-9);
     drawFractal(mix);
+    push();
+    fill(255, 255, 0);
+    textSize(16);
+    textAlign(LEFT, TOP);
+    text(fractalFunc, -windowWidth / 2 + 16, -windowHeight / 2 + 8, windowWidth);
+    pop();
     let wasGenerationFrame = isGenerationFrame;
     if (timeAcc > 1.0) {
         isGenerationFrame = true;
@@ -291,7 +298,7 @@ function draw() {
         isGenerationFrame = false;
     }
     if (!wasGenerationFrame) {
-        timeAcc += min(deltaTime / 1e3, 1 / 60) * 0.5;
+        timeAcc += min(deltaTime / 1e3, 1 / 60) * 2;
     }
 }
 function windowResized() {
