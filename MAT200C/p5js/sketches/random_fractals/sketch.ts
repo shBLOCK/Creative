@@ -236,6 +236,7 @@ function cosSmooth(x: number): number {
     return cos((x - 1.0) * PI) * 0.5 + 0.5;
 }
 
+let shouldGenerate = false;
 let isGenerationFrame = false;
 
 function draw() {
@@ -257,7 +258,7 @@ function draw() {
     }
 
     let mix = cosSmooth(cosSmooth(min(timeAcc, 1.0)));
-    // mix = min(max(mix, 1e-9), 1.0 - 1e-9);
+    mix = min(max(mix, 1e-45), 0.99999994);
     drawFractal(null, mix);
 
     push();
@@ -269,7 +270,8 @@ function draw() {
 
     let wasGenerationFrame = isGenerationFrame;
 
-    if (timeAcc > 1.0) {
+    if (shouldGenerate) {
+        shouldGenerate = false;
         isGenerationFrame = true;
         timeAcc = 0.0;
         lastFractalFunc = fractalFunc;
@@ -320,11 +322,12 @@ function draw() {
             break;
         }
     } else {
+        shouldGenerate = timeAcc > 1.0;
         isGenerationFrame = false;
     }
 
     if (!wasGenerationFrame) {
-        timeAcc += min(deltaTime / 1e3, 1/60) * 2;
+        timeAcc += min(deltaTime / 1e3, 1/60) * 0.5;
     }
 }
 
