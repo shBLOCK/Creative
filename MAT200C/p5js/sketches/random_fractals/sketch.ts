@@ -101,7 +101,9 @@ void main() {
     if (iter == MAX_ITER) {
         color = vec3(0.0);
     } else {
-        float d = float(iter) * 0.25 + 3.5;
+        float d = float(iter);
+//        float d = float(iter) - (1.0 - exp(-(length(z) / ESCAPE_THRESHOLD - 1.0)));
+        d = d * 0.25 + 3.5;
 //        color = cos(d + vec3(0, 2, 4)) * 0.5 + 0.5;
         color = vec3(cos(d + vec2(0.0, PI / 2.0)) * 0.5 + 0.5, 1.0);
     }
