@@ -265,7 +265,7 @@ function draw() {
     fill(255, 255, 0);
     textSize(16)
     textAlign(LEFT, TOP);
-    text(fractalFunc, -windowWidth / 2 + 16, -windowHeight / 2 + 8, windowWidth);
+    text(fractalFunc, -windowWidth / 2 + 16, -windowHeight / 2 + 8, windowWidth - 40);
     pop();
 
     let wasGenerationFrame = isGenerationFrame;
