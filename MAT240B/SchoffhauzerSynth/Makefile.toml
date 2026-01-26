@@ -1,0 +1,30 @@
+[tasks.cargo_build]
+command = "cargo"
+args = ["build", "${@}"]
+
+[tasks.post_build]
+script_runner = "python"
+script_extension = "py"
+# language=python
+script = '''
+import shutil
+from pathlib import Path
+
+PKG = "schoffhauzer_synth"
+
+def mkdir_and_copy(src, dst):
+    if not Path(src).exists():
+        return
+    Path(dst).parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(src, dst)
+
+mkdir_and_copy(f"./target/debug/{PKG}.dll", f"./target/clap/{PKG}.clap")
+'''
+
+[tasks.build]
+clear = true
+run_task = { name = ["cargo_build", "post_build"] }
+
+[tasks.default]
+clear = true
+run_task = "build"
