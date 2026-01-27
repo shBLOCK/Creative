@@ -113,7 +113,7 @@ impl ADSRInstance {
             _ => unreachable!(),
         };
         let power = *self.adsr.power(self.phase.unwrap()).unwrap();
-        lerp(range, power)
+        lerp(range, self.progress.powf(power))
     }
 
     pub fn advance(&mut self, delta: f32) {
