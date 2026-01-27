@@ -143,10 +143,12 @@ impl ADSRInstance {
             Some(ADSRPhase::Attack) | Some(ADSRPhase::Decay) => {
                 self.start_level = self.current_level();
                 self.phase = Some(ADSRPhase::Release);
+                self.progress = 0.0;
             }
             Some(ADSRPhase::Sustain) => {
                 self.start_level = self.adsr.sustain;
                 self.phase = Some(ADSRPhase::Release);
+                self.progress = 0.0;
             }
             _ => {}
         };
