@@ -3,6 +3,7 @@ use std::f32::consts::PI;
 pub struct Synth {
     pub sample_rate: f32,
     pub freq: f32,
+    pub hf_rolloff: f32,
 
     osc: f32,
     last_osc: f32,
@@ -15,6 +16,7 @@ impl Synth {
         Self {
             sample_rate,
             freq,
+            hf_rolloff: 1.0,
             osc: 0.0,
             last_osc: 0.0,
             phase: 0.0,
@@ -33,7 +35,7 @@ impl Synth {
             self.phase -= 2.0;
         }
 
-        self.osc = (self.osc + f32::sin(2.0 * PI * (self.phase + self.osc * scaling))) * 0.5;
+        self.osc = (self.osc + f32::sin(2.0 * PI * (self.phase + self.osc * scaling * self.hf_rolloff))) * 0.5;
         let mut out = 2.5 * self.osc + -1.5 * self.last_osc;
         self.last_osc = self.osc;
 

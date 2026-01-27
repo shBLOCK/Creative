@@ -6,9 +6,9 @@ use clack_extensions::params::{
     ParamDisplayWriter, ParamInfo, ParamInfoFlags, ParamInfoWriter, PluginAudioProcessorParams,
     PluginMainThreadParams,
 };
+use clack_plugin::events::UnknownEvent;
 use clack_plugin::events::event_types::{ParamModEvent, ParamValueEvent};
 use clack_plugin::events::spaces::CoreEventSpace;
-use clack_plugin::events::UnknownEvent;
 use clack_plugin::prelude::{ClapId, InputEvents, OutputEvents};
 use clack_plugin::utils::Cookie;
 use repetitive::repetitive;
@@ -66,6 +66,7 @@ impl ParamInfoFlagsExt for ParamInfoFlags {}
 pub struct SchoffhauzerSynthPluginParams {
     pub volume: RwLock<Modulated<DB<f32>>>,
     pub adsr: RwLock<ADSR<Modulated<f32>>>,
+    pub hf_rolloff: RwLock<Modulated<f32>>,
 }
 
 type Params = SchoffhauzerSynthPluginParams;
@@ -86,6 +87,7 @@ impl Default for SchoffhauzerSynthPluginParams {
                     }
                 })
             },
+            hf_rolloff: RwLock::new(Modulated::new(Params::HF_ROLLOFF.default_value as f32, 0.0)),
         }
     }
 }
@@ -123,6 +125,7 @@ impl SchoffhauzerSynthPluginParams {
         release_duration: &param_info!(id 6, "ADSR"@"Release Duration", 0.3 in 0.0..=5.0, IS_AUTOMATABLE_AND_MODULATABLE_ALL),
         release_power: &param_info!(id 7, "ADSR"@"Release Power", 0.7 in 0.2..=5.0, IS_AUTOMATABLE_AND_MODULATABLE_ALL),
     };
+    pub const HF_ROLLOFF: &ParamInfo<'static> = &param_info!(id 8, "OSC"@"High Frequency Rolloff", 1.0 in 0.0..=1.0, IS_AUTOMATABLE_AND_MODULATABLE_ALL);
 
     pub fn get_volume(&self) -> Modulated<DB<f32>> {
         *self.volume.read().unwrap()
@@ -130,6 +133,10 @@ impl SchoffhauzerSynthPluginParams {
 
     pub fn get_adsr(&self) -> ADSR<Modulated<f32>> {
         *self.adsr.read().unwrap()
+    }
+
+    pub fn get_hf_rolloff(&self) -> Modulated<f32> {
+        *self.hf_rolloff.read().unwrap()
     }
 
     repetitive! {
@@ -149,6 +156,9 @@ impl SchoffhauzerSynthPluginParams {
                             self.adsr.write().unwrap().@field.@ty = event.@event_method() as f32;
                         }
                     }
+                    __ if __ == Some(Self::HF_ROLLOFF.id) => {
+                        self.hf_rolloff.write().unwrap().@ty = event.@event_method() as f32;
+                    }
                     _ => {}
                 }
             }
@@ -167,7 +177,7 @@ impl SchoffhauzerSynthPluginParams {
 
 impl<'a> PluginMainThreadParams for SchoffhauzerSynthPluginMainThread<'a> {
     fn count(&mut self) -> u32 {
-        1 + 7
+        1 + 7 + 1
     }
 
     fn get_info(&mut self, param_index: u32, info: &mut ParamInfoWriter) {
@@ -182,6 +192,9 @@ impl<'a> PluginMainThreadParams for SchoffhauzerSynthPluginMainThread<'a> {
                 }
             }
         }
+        if param_index == i.next().unwrap() {
+            info.set(Params::HF_ROLLOFF);
+        }
     }
 
     fn get_value(&mut self, param_id: ClapId) -> Option<f64> {
@@ -194,6 +207,9 @@ impl<'a> PluginMainThreadParams for SchoffhauzerSynthPluginMainThread<'a> {
                     __ if __ == Some(Params::ADSR.@field.id) => {
                         Some(self.shared.params.get_adsr().@field.value as f64)
                     }
+                }
+                __ if __ == Some(Params::HF_ROLLOFF.id) => {
+                    Some(self.shared.params.get_hf_rolloff().value as f64)
                 }
                 _ => None,
             }
@@ -215,18 +231,18 @@ impl<'a> PluginMainThreadParams for SchoffhauzerSynthPluginMainThread<'a> {
                 @for p in ['attack_power, 'decay_power, 'sustain, 'release_power] {
                     __ if __ == Some(Params::ADSR.@p.id) => write!(writer, "{value:+.2}"),
                 }
+                __ if __ == Some(Params::HF_ROLLOFF.id) => write!(writer, "{:+.2}%", value * 100.0),
                 _ => Err(std::fmt::Error),
             }
         }
     }
 
-    fn text_to_value(&mut self, _param_id: ClapId, text: &CStr) -> Option<f64> {
+    fn text_to_value(&mut self, param_id: ClapId, text: &CStr) -> Option<f64> {
         let text = text.to_str().unwrap();
-        // match param_id {
-        //     __ if __ == Some(Params::VOLUME.id) => f64::from_str(&text).ok(),
-        //     _ => None,
-        // }
-        f64::from_str(&text).ok()
+        Some(match param_id {
+            __ if __ == Some(Params::HF_ROLLOFF.id) => f64::from_str(text).ok()? / 100.0,
+            _ => f64::from_str(text).ok()?,
+        })
     }
 
     fn flush(

@@ -59,6 +59,7 @@ struct Voice {
     volume: Modulated<Option<DB<f32>>>,
     adsr: ADSR<Modulated<Option<f32>>>,
     adsr_instance: ADSRInstance,
+    hf_rolloff: Modulated<Option<f32>>,
 }
 
 impl Voice {
@@ -77,6 +78,7 @@ impl Voice {
             volume: Modulated::new(None, None),
             adsr: ADSR::default(),
             adsr_instance: ADSRInstance::new(ADSR::default()),
+            hf_rolloff: Modulated::new(None, None),
         }
     }
 
@@ -103,10 +105,12 @@ impl Voice {
 
     fn synth_add_to(&mut self, buffer: &mut [f32], params: &SchoffhauzerSynthPluginParams) -> bool {
         let volume = self.volume.unwrap_or(params.get_volume()).modulated();
-
+        
         let adsr = self.adsr.map2(&params.get_adsr(), |a, b| a.unwrap_or(*b));
         let adsr = adsr.map(|it| it.modulated());
         self.adsr_instance.adsr = adsr;
+        
+        self.synth.hf_rolloff = self.hf_rolloff.unwrap_or(params.get_hf_rolloff()).modulated();
 
         for sample_ref in buffer {
             let mut sample = self.synth.synth();
@@ -224,6 +228,11 @@ impl PolySynth {
                                 voice.adsr.@field.@ty = Some(event.@event_method() as f32);
                             })
                         }
+                    }
+                    __ if __ == Some(SchoffhauzerSynthPluginParams::HF_ROLLOFF.id) => {
+                        self.for_each_matching_voice(&note_match, |voice| {
+                            voice.hf_rolloff.@ty = Some(event.@event_method() as f32);
+                        })
                     }
                     _ => {}
                 }
