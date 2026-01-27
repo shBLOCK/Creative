@@ -1,14 +1,14 @@
 use crate::utils::db::DB;
-use crate::utils::envelope::{ADSR, ADSRInstance};
+use crate::utils::envelope::ADSR;
 use crate::utils::modulated::Modulated;
-use crate::{SchoffhauzerSynthAudioProcessor, SchoffhauzerSynthPluginMainThread, const_pat};
+use crate::{SchoffhauzerSynthAudioProcessor, SchoffhauzerSynthPluginMainThread};
 use clack_extensions::params::{
     ParamDisplayWriter, ParamInfo, ParamInfoFlags, ParamInfoWriter, PluginAudioProcessorParams,
     PluginMainThreadParams,
 };
-use clack_plugin::events::UnknownEvent;
 use clack_plugin::events::event_types::{ParamModEvent, ParamValueEvent};
 use clack_plugin::events::spaces::CoreEventSpace;
+use clack_plugin::events::UnknownEvent;
 use clack_plugin::prelude::{ClapId, InputEvents, OutputEvents};
 use clack_plugin::utils::Cookie;
 use repetitive::repetitive;
@@ -90,7 +90,6 @@ impl Default for SchoffhauzerSynthPluginParams {
     }
 }
 
-
 macro_rules! join_str {
     ([$($first:literal $(, $rest:literal)*)?] ~ $join:literal) => {
         concat!($($first $(, $join, $rest)*)?)
@@ -142,11 +141,11 @@ impl SchoffhauzerSynthPluginParams {
 
             pub fn @['handle_param_ event_name '_event](&self, event: &@event_type) {
                 match event.param_id() {
-                    const_pat! { Some(Self::VOLUME.id) } => {
+                    __ if __ == Some(Self::VOLUME.id) => {
                         self.volume.write().unwrap().@ty = DB(event.@event_method() as f32);
                     }
                     @for field in ['attack_duration, 'attack_power, 'decay_duration, 'decay_power, 'sustain, 'release_duration, 'release_power] {
-                        const_pat! { Some(Self::ADSR.@field.id) } => {
+                        __ if __ == Some(Self::ADSR.@field.id) => {
                             self.adsr.write().unwrap().@field.@ty = event.@event_method() as f32;
                         }
                     }
@@ -188,11 +187,11 @@ impl<'a> PluginMainThreadParams for SchoffhauzerSynthPluginMainThread<'a> {
     fn get_value(&mut self, param_id: ClapId) -> Option<f64> {
         repetitive! {
             match param_id {
-                const_pat! { Some(Params::VOLUME.id) } => {
+                __ if __ == Some(Params::VOLUME.id) => {
                     Some(self.shared.params.get_volume().value.db() as f64)
                 }
                 @for field in ['attack_duration, 'attack_power, 'decay_duration, 'decay_power, 'sustain, 'release_duration, 'release_power] {
-                    const_pat! { Some(Params::ADSR.@field.id) } => {
+                    __ if __ == Some(Params::ADSR.@field.id) => {
                         Some(self.shared.params.get_adsr().@field.value as f64)
                     }
                 }
@@ -209,22 +208,22 @@ impl<'a> PluginMainThreadParams for SchoffhauzerSynthPluginMainThread<'a> {
     ) -> std::fmt::Result {
         repetitive! {
             match param_id {
-                const_pat! { Some(Params::VOLUME.id) } => write!(writer, "{value:+.2}dB"),
+                __ if __ == Some(Params::VOLUME.id) => write!(writer, "{value:+.2}dB"),
                 @for p in ['attack_duration, 'decay_duration, 'release_duration] {
-                    const_pat! { Some(Params::ADSR.@p.id) } => write!(writer, "{value:+.2}s"),
+                    __ if __ == Some(Params::ADSR.@p.id) => write!(writer, "{value:+.2}s"),
                 }
                 @for p in ['attack_power, 'decay_power, 'sustain, 'release_power] {
-                    const_pat! { Some(Params::ADSR.@p.id) } => write!(writer, "{value:+.2}"),
+                    __ if __ == Some(Params::ADSR.@p.id) => write!(writer, "{value:+.2}"),
                 }
                 _ => Err(std::fmt::Error),
             }
         }
     }
 
-    fn text_to_value(&mut self, param_id: ClapId, text: &CStr) -> Option<f64> {
+    fn text_to_value(&mut self, _param_id: ClapId, text: &CStr) -> Option<f64> {
         let text = text.to_str().unwrap();
         // match param_id {
-        //     const_pat! { Some(Params::VOLUME.id) } => f64::from_str(&text).ok(),
+        //     __ if __ == Some(Params::VOLUME.id) => f64::from_str(&text).ok(),
         //     _ => None,
         // }
         f64::from_str(&text).ok()
@@ -247,7 +246,7 @@ impl<'a> PluginAudioProcessorParams for SchoffhauzerSynthAudioProcessor<'a> {
     fn flush(
         &mut self,
         input_parameter_changes: &InputEvents,
-        output_parameter_changes: &mut OutputEvents,
+        _output_parameter_changes: &mut OutputEvents,
     ) {
         for event in input_parameter_changes {
             if self.shared.params.handle_event(event) {

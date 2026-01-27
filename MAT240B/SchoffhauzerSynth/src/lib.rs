@@ -1,7 +1,6 @@
 #![feature(linked_list_cursors)]
 #![feature(step_trait)]
 #![feature(new_range_api)]
-#![feature(guard_patterns)]
 
 mod derive_alias;
 mod params;
@@ -74,6 +73,7 @@ impl<'a> SchoffhauzerSynthAudioProcessor<'a> {
         match event.as_core_event() {
             Some(CoreEventSpace::NoteOn(event)) => self.synth.handle_note_on_event(event, &self.shared.params),
             Some(CoreEventSpace::NoteOff(event)) => self.synth.handle_note_off_event(event),
+            Some(CoreEventSpace::NoteChoke(event)) => self.synth.handle_note_choke_event(event),
             Some(CoreEventSpace::ParamValue(event)) => {
                 if event.pckn().matches_all() {
                     self.shared.params.handle_param_value_event(event);
@@ -88,7 +88,7 @@ impl<'a> SchoffhauzerSynthAudioProcessor<'a> {
                     self.synth.handle_param_mod_event(event);
                 }
             }
-            Some(CoreEventSpace::NoteExpression(event)) => {}
+            // Some(CoreEventSpace::NoteExpression(event)) => {}
             _ => {}
         }
     }

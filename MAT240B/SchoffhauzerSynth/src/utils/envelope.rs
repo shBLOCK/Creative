@@ -1,7 +1,8 @@
 use crate::utils::lerp;
 use core::fmt::Debug;
+use repetitive::repetitive;
 
-#[derive_aliases::derive(..Copy, Debug, derive_more::Display, Default)]
+#[derive_aliases::derive(..Copy, Debug, derive_more::Display, Default, ..SerDe)]
 #[display(bound(T: Debug))]
 #[display("{self:?}")]
 pub struct ADSR<T> {
@@ -32,22 +33,30 @@ impl<T> ADSR<T> {
             ADSRPhase::Release => Some(&self.release_power),
         }
     }
-    
+
+    pub fn map<R>(&self, mut f: impl FnMut(&T) -> R) -> ADSR<R> {
+        repetitive! {
+            ADSR {
+                @for field in ['attack_duration, 'attack_power, 'decay_duration, 'decay_power, 'sustain, 'release_duration, 'release_power] {
+                    @field: f(&self.@field),
+                }
+            }
+        }
+    }
+
     pub fn map2<B, R>(&self, other: &ADSR<B>, mut f: impl FnMut(&T, &B) -> R) -> ADSR<R> {
-        ADSR {
-            attack_duration: f(&self.attack_duration, &other.attack_duration),
-            attack_power: f(&self.attack_power, &other.attack_power),
-            decay_duration: f(&self.decay_duration, &other.decay_duration),
-            decay_power: f(&self.decay_power, &other.decay_power),
-            sustain: f(&self.sustain, &other.sustain),
-            release_duration: f(&self.release_duration, &other.release_duration),
-            release_power: f(&self.release_power, &other.release_power),
+        repetitive! {
+            ADSR {
+                @for field in ['attack_duration, 'attack_power, 'decay_duration, 'decay_power, 'sustain, 'release_duration, 'release_power] {
+                    @field: f(&self.@field, &other.@field),
+                }
+            }
         }
     }
 }
 
 impl<T: Copy> ADSR<Option<T>> {
-    pub fn unwrap_or(self, default: ADSR<T>) -> ADSR<T> {
+    pub fn _unwrap_or(self, default: ADSR<T>) -> ADSR<T> {
         self.map2(&default, |a, b| a.unwrap_or(*b))
     }
 }

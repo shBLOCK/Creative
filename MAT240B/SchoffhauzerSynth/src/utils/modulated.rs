@@ -4,7 +4,7 @@ use derive_more::Display;
 use std::fmt::Debug;
 use std::ops::Add;
 
-#[derive_aliases::derive(..Copy, Debug, Display, ..SerDe)]
+#[derive_aliases::derive(..Copy, Debug, Display, ..SerDe, Default)]
 #[display("({value} + {modulation})")]
 pub struct Modulated<T> {
     pub value: T,

@@ -1,18 +1,18 @@
 use crate::params::SchoffhauzerSynthPluginParams;
 use crate::synth::synth::Synth;
+use crate::utils::Single;
 use crate::utils::db::DB;
+use crate::utils::envelope::{ADSR, ADSRInstance};
 use crate::utils::midi_note::MidiNote;
 use crate::utils::modulated::Modulated;
-use crate::utils::Single;
+use clack_plugin::events::Match;
 use clack_plugin::events::event_types::{
     NoteChokeEvent, NoteEndEvent, NoteExpressionEvent, NoteOffEvent, NoteOnEvent, ParamModEvent,
     ParamValueEvent,
 };
-use clack_plugin::events::Match;
+use repetitive::repetitive;
 use std::collections::LinkedList;
 use std::ops::Range;
-use crate::const_pat;
-use crate::utils::envelope::{ADSRInstance, ADSR};
 
 pub struct HostNoteMatch {
     channel: Match<u16>,
@@ -20,10 +20,18 @@ pub struct HostNoteMatch {
     id: Match<u32>,
 }
 
-macro_rules! impl_host_note_match_from_event {
-    ($event: path) => {
-        impl From<&$event> for HostNoteMatch {
-            fn from(value: &$event) -> Self {
+repetitive! {
+    @for event in [
+        'NoteOnEvent,
+        'NoteOffEvent,
+        'NoteChokeEvent,
+        'NoteEndEvent,
+        'NoteExpressionEvent,
+        'ParamValueEvent,
+        'ParamModEvent,
+    ] {
+        impl From<&@event> for HostNoteMatch {
+            fn from(value: &@event) -> Self {
                 Self {
                     channel: value.channel(),
                     note: value.key(),
@@ -31,16 +39,8 @@ macro_rules! impl_host_note_match_from_event {
                 }
             }
         }
-    };
+    }
 }
-
-impl_host_note_match_from_event!(NoteOnEvent);
-impl_host_note_match_from_event!(NoteOffEvent);
-impl_host_note_match_from_event!(NoteChokeEvent);
-impl_host_note_match_from_event!(NoteEndEvent);
-impl_host_note_match_from_event!(NoteExpressionEvent);
-impl_host_note_match_from_event!(ParamValueEvent);
-impl_host_note_match_from_event!(ParamModEvent);
 
 struct NoteIdentHost {
     channel: u16,
@@ -50,26 +50,33 @@ struct NoteIdentHost {
 
 enum NoteIdent {
     Host(NoteIdentHost),
-    Other(u32),
+    _Other(u32),
 }
 
 struct Voice {
     ident: NoteIdent,
     synth: Synth,
     volume: Modulated<Option<DB<f32>>>,
-    adsr: ADSR<Option<f32>>,
+    adsr: ADSR<Modulated<Option<f32>>>,
     adsr_instance: ADSRInstance,
 }
 
 impl Voice {
-    fn new_host(params: &SchoffhauzerSynthPluginParams, sample_rate: f32, channel: u16, note: u16, id: Option<u32>, velocity: f32) -> Self {
+    fn new_host(
+        _params: &SchoffhauzerSynthPluginParams,
+        sample_rate: f32,
+        channel: u16,
+        note: u16,
+        id: Option<u32>,
+        _velocity: f32,
+    ) -> Self {
         let note = MidiNote(note);
         Self {
             ident: NoteIdent::Host(NoteIdentHost { channel, note, id }),
             synth: Synth::new(sample_rate, note.freq()),
             volume: Modulated::new(None, None),
             adsr: ADSR::default(),
-            adsr_instance: ADSRInstance::new(*params.adsr.read().unwrap()),
+            adsr_instance: ADSRInstance::new(ADSR::default()),
         }
     }
 
@@ -86,12 +93,21 @@ impl Voice {
         }
     }
 
-    fn off(&mut self, velocity: f32) {
-        self.adsr_instance.off()
+    fn off(&mut self, _velocity: f32) {
+        self.adsr_instance.off();
+    }
+
+    fn choke(&mut self) {
+        self.adsr_instance.force_end();
     }
 
     fn synth_add_to(&mut self, buffer: &mut [f32], params: &SchoffhauzerSynthPluginParams) -> bool {
         let volume = self.volume.unwrap_or(params.get_volume()).modulated();
+
+        let adsr = self.adsr.map2(&params.get_adsr(), |a, b| a.unwrap_or(*b));
+        let adsr = adsr.map(|it| it.modulated());
+        self.adsr_instance.adsr = adsr;
+
         for sample_ref in buffer {
             let mut sample = self.synth.synth();
             sample *= volume.linear();
@@ -139,7 +155,11 @@ impl PolySynth {
             .for_each(f)
     }
 
-    pub fn handle_note_on_event(&mut self, event: &NoteOnEvent, params: &SchoffhauzerSynthPluginParams) {
+    pub fn handle_note_on_event(
+        &mut self,
+        event: &NoteOnEvent,
+        params: &SchoffhauzerSynthPluginParams,
+    ) {
         if !event.port_index().matches(0u16) {
             return;
         }
@@ -159,7 +179,7 @@ impl PolySynth {
                 key,
                 event.note_id().into_specific(),
                 event.velocity() as f32,
-            ))
+            ));
         }
     }
 
@@ -169,27 +189,45 @@ impl PolySynth {
         }
 
         self.for_each_matching_voice(&HostNoteMatch::from(event), |voice| {
-            voice.off(event.velocity() as f32)
+            voice.off(event.velocity() as f32);
         });
     }
 
-    pub fn handle_param_value_event(&mut self, event: &ParamValueEvent) {
-        match event.param_id() {
-            const_pat! { Some(SchoffhauzerSynthPluginParams::VOLUME.id) } => self
-                .for_each_matching_voice(&HostNoteMatch::from(event), |voice| {
-                    voice.volume.value = Some(DB(event.value() as f32))
-                }),
-            _ => {}
+    pub fn handle_note_choke_event(&mut self, event: &NoteChokeEvent) {
+        if !event.port_index().matches(0u16) {
+            return;
         }
+
+        self.for_each_matching_voice(&HostNoteMatch::from(event), |voice| {
+            voice.choke();
+        })
     }
 
-    pub fn handle_param_mod_event(&mut self, event: &ParamModEvent) {
-        match event.param_id() {
-            const_pat! { Some(SchoffhauzerSynthPluginParams::VOLUME.id) } => self
-                .for_each_matching_voice(&HostNoteMatch::from(event), |voice| {
-                    voice.volume.modulation = Some(DB(event.amount() as f32))
-                }),
-            _ => {}
+    repetitive! {
+        @for ty in ['value, 'modulation] {
+            @let [event_name, event_type, event_method] = match ty {
+                'value => ['value, 'ParamValueEvent, 'value],
+                'modulation => ['mod, 'ParamModEvent, 'amount],
+            };
+
+            pub fn @['handle_param_ event_name '_event](&mut self, event: &@event_type) {
+                let note_match = HostNoteMatch::from(event);
+                match event.param_id() {
+                    __ if __ == Some(SchoffhauzerSynthPluginParams::VOLUME.id) => {
+                        self.for_each_matching_voice(&note_match, |voice| {
+                            voice.volume.@ty = Some(DB(event.@event_method() as f32));
+                        })
+                    }
+                    @for field in ['attack_duration, 'attack_power, 'decay_duration, 'decay_power, 'sustain, 'release_duration, 'release_power] {
+                        __ if __ == Some(SchoffhauzerSynthPluginParams::ADSR.@field.id) => {
+                            self.for_each_matching_voice(&note_match, |voice| {
+                                voice.adsr.@field.@ty = Some(event.@event_method() as f32);
+                            })
+                        }
+                    }
+                    _ => {}
+                }
+            }
         }
     }
 
