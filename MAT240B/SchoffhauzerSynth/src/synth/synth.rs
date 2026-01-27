@@ -1,8 +1,8 @@
 use std::f32::consts::PI;
 
 pub struct Synth {
-    sample_rate: f32,
-    freq: f32,
+    pub sample_rate: f32,
+    pub freq: f32,
 
     osc: f32,
     last_osc: f32,

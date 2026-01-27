@@ -2,6 +2,8 @@
   <dictionary name="project">
     <words>
       <w>Schoffhauzer</w>
+      <w>adsr</w>
+      <w>lerp</w>
     </words>
   </dictionary>
 </component>

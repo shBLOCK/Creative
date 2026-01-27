@@ -24,7 +24,7 @@ static_assertions = "1.1.0"
 num-traits = "0.2.19"
 derive_more = { version = "2.1.1", features = ["full"] }
 derive_aliases = "0.4.7"
-seq-macro = "0.3.6"
+repetitive = { version = "0.3.2", default-features = false, features = [] }
 
 [dev-dependencies]
 cargo-make = "0.37.24"

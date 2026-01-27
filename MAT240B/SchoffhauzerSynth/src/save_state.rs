@@ -22,7 +22,7 @@ impl PluginStateImpl for SchoffhauzerSynthPluginMainThread<'_> {
     //noinspection RsUnwrap
     fn load(&mut self, input: &mut InputStream) -> Result<(), PluginError> {
         let state = serde_json::from_reader::<_, SchoffhauzerSynthPluginState>(input)?;
-        *self.shared.params.volume.lock().unwrap() = state.volume;
+        *self.shared.params.volume.write().unwrap() = state.volume;
         Ok(())
     }
 }

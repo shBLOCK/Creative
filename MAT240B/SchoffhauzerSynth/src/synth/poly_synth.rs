@@ -11,6 +11,8 @@ use clack_plugin::events::event_types::{
 use clack_plugin::events::Match;
 use std::collections::LinkedList;
 use std::ops::Range;
+use crate::const_pat;
+use crate::utils::envelope::{ADSRInstance, ADSR};
 
 pub struct HostNoteMatch {
     channel: Match<u16>,
@@ -55,17 +57,19 @@ struct Voice {
     ident: NoteIdent,
     synth: Synth,
     volume: Modulated<Option<DB<f32>>>,
-    _on: bool,
+    adsr: ADSR<Option<f32>>,
+    adsr_instance: ADSRInstance,
 }
 
 impl Voice {
-    fn new_host(sample_rate: f32, channel: u16, note: u16, id: Option<u32>, velocity: f32) -> Self {
+    fn new_host(params: &SchoffhauzerSynthPluginParams, sample_rate: f32, channel: u16, note: u16, id: Option<u32>, velocity: f32) -> Self {
         let note = MidiNote(note);
         Self {
             ident: NoteIdent::Host(NoteIdentHost { channel, note, id }),
             synth: Synth::new(sample_rate, note.freq()),
             volume: Modulated::new(None, None),
-            _on: true,
+            adsr: ADSR::default(),
+            adsr_instance: ADSRInstance::new(*params.adsr.read().unwrap()),
         }
     }
 
@@ -83,7 +87,7 @@ impl Voice {
     }
 
     fn off(&mut self, velocity: f32) {
-        self._on = false;
+        self.adsr_instance.off()
     }
 
     fn synth_add_to(&mut self, buffer: &mut [f32], params: &SchoffhauzerSynthPluginParams) -> bool {
@@ -91,9 +95,14 @@ impl Voice {
         for sample_ref in buffer {
             let mut sample = self.synth.synth();
             sample *= volume.linear();
+            self.adsr_instance.advance(1.0 / self.synth.sample_rate);
+            sample *= self.adsr_instance.current_level();
             *sample_ref += sample;
+            if self.adsr_instance.ended() {
+                return false;
+            }
         }
-        self._on
+        true
     }
 }
 
@@ -130,7 +139,7 @@ impl PolySynth {
             .for_each(f)
     }
 
-    pub fn handle_note_on_event(&mut self, event: &NoteOnEvent) {
+    pub fn handle_note_on_event(&mut self, event: &NoteOnEvent, params: &SchoffhauzerSynthPluginParams) {
         if !event.port_index().matches(0u16) {
             return;
         }
@@ -144,6 +153,7 @@ impl PolySynth {
 
         for key in keys {
             self.voices.push_back(Voice::new_host(
+                params,
                 self.sample_rate,
                 channel,
                 key,
@@ -165,7 +175,7 @@ impl PolySynth {
 
     pub fn handle_param_value_event(&mut self, event: &ParamValueEvent) {
         match event.param_id() {
-            Some(SchoffhauzerSynthPluginParams::ID_VOLUME) => self
+            const_pat! { Some(SchoffhauzerSynthPluginParams::VOLUME.id) } => self
                 .for_each_matching_voice(&HostNoteMatch::from(event), |voice| {
                     voice.volume.value = Some(DB(event.value() as f32))
                 }),
@@ -175,7 +185,7 @@ impl PolySynth {
 
     pub fn handle_param_mod_event(&mut self, event: &ParamModEvent) {
         match event.param_id() {
-            Some(SchoffhauzerSynthPluginParams::ID_VOLUME) => self
+            const_pat! { Some(SchoffhauzerSynthPluginParams::VOLUME.id) } => self
                 .for_each_matching_voice(&HostNoteMatch::from(event), |voice| {
                     voice.volume.modulation = Some(DB(event.amount() as f32))
                 }),

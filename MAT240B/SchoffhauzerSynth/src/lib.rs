@@ -1,6 +1,7 @@
 #![feature(linked_list_cursors)]
 #![feature(step_trait)]
 #![feature(new_range_api)]
+#![feature(guard_patterns)]
 
 mod derive_alias;
 mod params;
@@ -71,7 +72,7 @@ pub struct SchoffhauzerSynthAudioProcessor<'a> {
 impl<'a> SchoffhauzerSynthAudioProcessor<'a> {
     fn handle_event(&mut self, event: &UnknownEvent) {
         match event.as_core_event() {
-            Some(CoreEventSpace::NoteOn(event)) => self.synth.handle_note_on_event(event),
+            Some(CoreEventSpace::NoteOn(event)) => self.synth.handle_note_on_event(event, &self.shared.params),
             Some(CoreEventSpace::NoteOff(event)) => self.synth.handle_note_off_event(event),
             Some(CoreEventSpace::ParamValue(event)) => {
                 if event.pckn().matches_all() {

@@ -18,6 +18,15 @@ impl<T: Add<T, Output = T> + Copy> Modulated<T> {
 }
 
 impl<T> Modulated<T> {
+    pub fn into_modulated<I: Add<I, Output = I> + Copy>(self) -> I
+    where
+        T: Into<I>,
+    {
+        self.value.into() + self.modulation.into()
+    }
+}
+
+impl<T> Modulated<T> {
     pub fn new(value: T, modulation: T) -> Self {
         Self { value, modulation }
     }
