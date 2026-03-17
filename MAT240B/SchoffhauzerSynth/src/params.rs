@@ -11,13 +11,13 @@ use clack_plugin::events::event_types::{ParamModEvent, ParamValueEvent};
 use clack_plugin::events::spaces::CoreEventSpace;
 use clack_plugin::prelude::{ClapId, InputEvents, OutputEvents};
 use clack_plugin::utils::Cookie;
-use repetitive::repetitive;
 use static_assertions::assert_impl_all;
 use std::f64;
 use std::ffi::CStr;
 use std::fmt::Write as _;
 use std::str::FromStr;
 use std::sync::RwLock;
+use pymeta::pymeta;
 
 pub trait ParamInfoFlagsExt {
     const IS_AUTOMATABLE_ALL: ParamInfoFlags = ParamInfoFlags::from_bits_truncate(
@@ -80,10 +80,10 @@ impl Default for SchoffhauzerSynthPluginParams {
                 DB(Params::VOLUME.default_value as f32),
                 DB(0.0),
             )),
-            adsr: repetitive! {
+            adsr: pymeta! {
                 RwLock::new(ADSR {
-                    @for field in ['attack_duration, 'attack_power, 'decay_duration, 'decay_power, 'sustain, 'release_duration, 'release_power] {
-                        @field: Modulated::new(Params::ADSR.@field.default_value as f32, 0.0),
+                    $for field in ["attack_duration", "attack_power", "decay_duration", "decay_power", "sustain", "release_duration", "release_power"]:{
+                        $field$: Modulated::new(Params::ADSR.$field$.default_value as f32, 0.0),
                     }
                 })
             },
@@ -139,25 +139,23 @@ impl SchoffhauzerSynthPluginParams {
         *self.hf_rolloff.read().unwrap()
     }
 
-    repetitive! {
-        @for ty in ['value, 'modulation] {
-            @let [event_name, event_type, event_method] = match ty {
-                'value => ['value, 'ParamValueEvent, 'value],
-                'modulation => ['mod, 'ParamModEvent, 'amount],
-            };
-
-            pub fn @['handle_param_ event_name '_event](&self, event: &@event_type) {
+    pymeta! {
+        $for ty, event_name, event_type, event_method in [
+            ("value",      "value", "ParamValueEvent", "value"),
+            ("modulation", "mod",   "ParamModEvent",   "amount"),
+        ]:{
+            pub fn handle_param_~$event_name$~_event(&self, event: &$event_type$) {
                 match event.param_id() {
                     __ if __ == Some(Self::VOLUME.id) => {
-                        self.volume.write().unwrap().@ty = DB(event.@event_method() as f32);
+                        self.volume.write().unwrap().$ty$ = DB(event.$event_method$() as f32);
                     }
-                    @for field in ['attack_duration, 'attack_power, 'decay_duration, 'decay_power, 'sustain, 'release_duration, 'release_power] {
-                        __ if __ == Some(Self::ADSR.@field.id) => {
-                            self.adsr.write().unwrap().@field.@ty = event.@event_method() as f32;
+                    $for field in ["attack_duration", "attack_power", "decay_duration", "decay_power", "sustain", "release_duration", "release_power"]:{
+                        __ if __ == Some(Self::ADSR.$field$.id) => {
+                            self.adsr.write().unwrap().$field$.$ty$ = event.$event_method$() as f32;
                         }
                     }
                     __ if __ == Some(Self::HF_ROLLOFF.id) => {
-                        self.hf_rolloff.write().unwrap().@ty = event.@event_method() as f32;
+                        self.hf_rolloff.write().unwrap().$ty$ = event.$event_method$() as f32;
                     }
                     _ => {}
                 }
@@ -185,10 +183,10 @@ impl<'a> PluginMainThreadParams for SchoffhauzerSynthPluginMainThread<'a> {
         if param_index == i.next().unwrap() {
             info.set(Params::VOLUME);
         }
-        repetitive! {
-            @for field in ['attack_duration, 'attack_power, 'decay_duration, 'decay_power, 'sustain, 'release_duration, 'release_power] {
+        pymeta! {
+            $for field in ["attack_duration", "attack_power", "decay_duration", "decay_power", "sustain", "release_duration", "release_power"]:{
                 if param_index == i.next().unwrap() {
-                    info.set(Params::ADSR.@field);
+                    info.set(Params::ADSR.$field$);
                 }
             }
         }
@@ -198,14 +196,14 @@ impl<'a> PluginMainThreadParams for SchoffhauzerSynthPluginMainThread<'a> {
     }
 
     fn get_value(&mut self, param_id: ClapId) -> Option<f64> {
-        repetitive! {
+        pymeta! {
             match param_id {
                 __ if __ == Some(Params::VOLUME.id) => {
                     Some(self.shared.params.get_volume().value.db() as f64)
                 }
-                @for field in ['attack_duration, 'attack_power, 'decay_duration, 'decay_power, 'sustain, 'release_duration, 'release_power] {
-                    __ if __ == Some(Params::ADSR.@field.id) => {
-                        Some(self.shared.params.get_adsr().@field.value as f64)
+                $for field in ["attack_duration", "attack_power", "decay_duration", "decay_power", "sustain", "release_duration", "release_power"]:{
+                    __ if __ == Some(Params::ADSR.$field$.id) => {
+                        Some(self.shared.params.get_adsr().$field$.value as f64)
                     }
                 }
                 __ if __ == Some(Params::HF_ROLLOFF.id) => {
@@ -222,14 +220,19 @@ impl<'a> PluginMainThreadParams for SchoffhauzerSynthPluginMainThread<'a> {
         value: f64,
         writer: &mut ParamDisplayWriter,
     ) -> std::fmt::Result {
-        repetitive! {
+        pymeta! {
             match param_id {
                 __ if __ == Some(Params::VOLUME.id) => write!(writer, "{value:+.2}dB"),
-                @for p in ['attack_duration, 'decay_duration, 'release_duration] {
-                    __ if __ == Some(Params::ADSR.@p.id) => write!(writer, "{value:+.2}s"),
-                }
-                @for p in ['attack_power, 'decay_power, 'sustain, 'release_power] {
-                    __ if __ == Some(Params::ADSR.@p.id) => write!(writer, "{value:+.2}"),
+                $for field, unit in [
+                    ("attack_duration", "s"),
+                    ("decay_duration", "s"),
+                    ("release_duration", "s"),
+                    ("attack_power", ""),
+                    ("decay_power", ""),
+                    ("sustain", ""),
+                    ("release_power", ""),
+                ]:{
+                    __ if __ == Some(Params::ADSR.$field$.id) => write!(writer, $lit("{value:+.2}" + unit)$),
                 }
                 __ if __ == Some(Params::HF_ROLLOFF.id) => write!(writer, "{:+.2}%", value * 100.0),
                 _ => Err(std::fmt::Error),

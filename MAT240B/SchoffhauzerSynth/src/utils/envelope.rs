@@ -1,6 +1,6 @@
 use crate::utils::lerp;
 use core::fmt::Debug;
-use repetitive::repetitive;
+use pymeta::pymeta;
 
 #[derive_aliases::derive(..Copy, Debug, derive_more::Display, Default, ..SerDe)]
 #[display(bound(T: Debug))]
@@ -35,20 +35,20 @@ impl<T> ADSR<T> {
     }
 
     pub fn map<R>(&self, mut f: impl FnMut(&T) -> R) -> ADSR<R> {
-        repetitive! {
+        pymeta! {
             ADSR {
-                @for field in ['attack_duration, 'attack_power, 'decay_duration, 'decay_power, 'sustain, 'release_duration, 'release_power] {
-                    @field: f(&self.@field),
+                $for field in ["attack_duration", "attack_power", "decay_duration", "decay_power", "sustain", "release_duration", "release_power"]:{
+                    $field$: f(&self.$field$),
                 }
             }
         }
     }
 
     pub fn map2<B, R>(&self, other: &ADSR<B>, mut f: impl FnMut(&T, &B) -> R) -> ADSR<R> {
-        repetitive! {
+        pymeta! {
             ADSR {
-                @for field in ['attack_duration, 'attack_power, 'decay_duration, 'decay_power, 'sustain, 'release_duration, 'release_power] {
-                    @field: f(&self.@field, &other.@field),
+                $for field in ["attack_duration", "attack_power", "decay_duration", "decay_power", "sustain", "release_duration", "release_power"]:{
+                    $field$: f(&self.$field$, &other.$field$),
                 }
             }
         }

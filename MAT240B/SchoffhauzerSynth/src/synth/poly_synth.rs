@@ -10,7 +10,7 @@ use clack_plugin::events::event_types::{
     NoteChokeEvent, NoteEndEvent, NoteExpressionEvent, NoteOffEvent, NoteOnEvent, ParamModEvent,
     ParamValueEvent,
 };
-use repetitive::repetitive;
+use pymeta::pymeta;
 use std::collections::LinkedList;
 use std::ops::Range;
 
@@ -20,18 +20,18 @@ pub struct HostNoteMatch {
     id: Match<u32>,
 }
 
-repetitive! {
-    @for event in [
-        'NoteOnEvent,
-        'NoteOffEvent,
-        'NoteChokeEvent,
-        'NoteEndEvent,
-        'NoteExpressionEvent,
-        'ParamValueEvent,
-        'ParamModEvent,
-    ] {
-        impl From<&@event> for HostNoteMatch {
-            fn from(value: &@event) -> Self {
+pymeta! {
+    $for event in [
+        "NoteOnEvent",
+        "NoteOffEvent",
+        "NoteChokeEvent",
+        "NoteEndEvent",
+        "NoteExpressionEvent",
+        "ParamValueEvent",
+        "ParamModEvent",
+    ]:{
+        impl From<&$event$> for HostNoteMatch {
+            fn from(value: &$event$) -> Self {
                 Self {
                     channel: value.channel(),
                     note: value.key(),
@@ -105,12 +105,15 @@ impl Voice {
 
     fn synth_add_to(&mut self, buffer: &mut [f32], params: &SchoffhauzerSynthPluginParams) -> bool {
         let volume = self.volume.unwrap_or(params.get_volume()).modulated();
-        
+
         let adsr = self.adsr.map2(&params.get_adsr(), |a, b| a.unwrap_or(*b));
         let adsr = adsr.map(|it| it.modulated());
         self.adsr_instance.adsr = adsr;
-        
-        self.synth.hf_rolloff = self.hf_rolloff.unwrap_or(params.get_hf_rolloff()).modulated();
+
+        self.synth.hf_rolloff = self
+            .hf_rolloff
+            .unwrap_or(params.get_hf_rolloff())
+            .modulated();
 
         for sample_ref in buffer {
             let mut sample = self.synth.synth();
@@ -207,31 +210,29 @@ impl PolySynth {
         })
     }
 
-    repetitive! {
-        @for ty in ['value, 'modulation] {
-            @let [event_name, event_type, event_method] = match ty {
-                'value => ['value, 'ParamValueEvent, 'value],
-                'modulation => ['mod, 'ParamModEvent, 'amount],
-            };
-
-            pub fn @['handle_param_ event_name '_event](&mut self, event: &@event_type) {
+    pymeta! {
+        $for ty, event_name, event_type, event_method in [
+            ("value",      "value", "ParamValueEvent", "value"),
+            ("modulation", "mod",   "ParamModEvent",   "amount"),
+        ]:{
+            pub fn handle_param_~$event_name$~_event(&mut self, event: &$event_type$) {
                 let note_match = HostNoteMatch::from(event);
                 match event.param_id() {
                     __ if __ == Some(SchoffhauzerSynthPluginParams::VOLUME.id) => {
                         self.for_each_matching_voice(&note_match, |voice| {
-                            voice.volume.@ty = Some(DB(event.@event_method() as f32));
+                            voice.volume.$ty$ = Some(DB(event.$event_method$() as f32));
                         })
                     }
-                    @for field in ['attack_duration, 'attack_power, 'decay_duration, 'decay_power, 'sustain, 'release_duration, 'release_power] {
-                        __ if __ == Some(SchoffhauzerSynthPluginParams::ADSR.@field.id) => {
+                    $for field in ["attack_duration", "attack_power", "decay_duration", "decay_power", "sustain", "release_duration", "release_power"]:{
+                        __ if __ == Some(SchoffhauzerSynthPluginParams::ADSR.$field$.id) => {
                             self.for_each_matching_voice(&note_match, |voice| {
-                                voice.adsr.@field.@ty = Some(event.@event_method() as f32);
+                                voice.adsr.$field$.$ty$ = Some(event.$event_method$() as f32);
                             })
                         }
                     }
                     __ if __ == Some(SchoffhauzerSynthPluginParams::HF_ROLLOFF.id) => {
                         self.for_each_matching_voice(&note_match, |voice| {
-                            voice.hf_rolloff.@ty = Some(event.@event_method() as f32);
+                            voice.hf_rolloff.$ty$ = Some(event.$event_method$() as f32);
                         })
                     }
                     _ => {}
