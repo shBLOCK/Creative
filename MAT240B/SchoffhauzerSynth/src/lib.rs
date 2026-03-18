@@ -1,18 +1,23 @@
 #![feature(linked_list_cursors)]
 #![feature(step_trait)]
 #![feature(new_range_api)]
+#![feature(lock_value_accessors)]
 
 mod derive_alias;
 mod params;
+mod remote;
 mod save_state;
 mod synth;
 mod utils;
 
 use crate::params::SchoffhauzerSynthPluginParams;
+use crate::remote::spawn_remote_thread;
+use crate::synth::poly_synth::PolySynth;
 use clack_extensions::audio_ports::{
     AudioPortFlags, AudioPortInfo, AudioPortInfoWriter, AudioPortType, PluginAudioPorts,
     PluginAudioPortsImpl,
 };
+use clack_extensions::log::{HostLog, LogSeverity};
 use clack_extensions::note_ports::{
     NoteDialect, NoteDialects, NotePortInfo, NotePortInfoWriter, PluginNotePorts,
     PluginNotePortsImpl,
@@ -22,13 +27,14 @@ use clack_extensions::state::PluginState;
 use clack_plugin::events::spaces::CoreEventSpace;
 use clack_plugin::plugin::features::{INSTRUMENT, MONO, SYNTHESIZER};
 use clack_plugin::prelude::*;
-use crate::synth::poly_synth::PolySynth;
+use pymeta::pymeta;
+use std::ffi::CStr;
 
 pub struct SchoffhauzerSynthPlugin;
 
 impl Plugin for SchoffhauzerSynthPlugin {
     type AudioProcessor<'a> = SchoffhauzerSynthAudioProcessor<'a>;
-    type Shared<'a> = SchoffhauzerSynthShared;
+    type Shared<'a> = SchoffhauzerSynthShared<'a>;
     type MainThread<'a> = SchoffhauzerSynthPluginMainThread<'a>;
 
     fn declare_extensions(
@@ -49,10 +55,14 @@ impl DefaultPluginFactory for SchoffhauzerSynthPlugin {
             .with_features([SYNTHESIZER, MONO, INSTRUMENT])
     }
 
-    fn new_shared(_host: HostSharedHandle<'_>) -> Result<Self::Shared<'_>, PluginError> {
-        Ok(SchoffhauzerSynthShared {
+    fn new_shared(host: HostSharedHandle<'_>) -> Result<Self::Shared<'_>, PluginError> {
+        unsafe { std::env::set_var("RUST_BACKTRACE", "full"); }
+        let shared = SchoffhauzerSynthShared {
+            host,
             params: SchoffhauzerSynthPluginParams::default(),
-        })
+            logger: host.get_extension::<HostLog>(),
+        };
+        Ok(shared)
     }
 
     fn new_main_thread<'a>(
@@ -64,14 +74,16 @@ impl DefaultPluginFactory for SchoffhauzerSynthPlugin {
 }
 
 pub struct SchoffhauzerSynthAudioProcessor<'a> {
-    shared: &'a SchoffhauzerSynthShared,
+    shared: &'a SchoffhauzerSynthShared<'a>,
     synth: PolySynth,
 }
 
 impl<'a> SchoffhauzerSynthAudioProcessor<'a> {
     fn handle_event(&mut self, event: &UnknownEvent) {
         match event.as_core_event() {
-            Some(CoreEventSpace::NoteOn(event)) => self.synth.handle_note_on_event(event, &self.shared.params),
+            Some(CoreEventSpace::NoteOn(event)) => {
+                self.synth.handle_note_on_event(event, &self.shared.params)
+            }
             Some(CoreEventSpace::NoteOff(event)) => self.synth.handle_note_off_event(event),
             Some(CoreEventSpace::NoteChoke(event)) => self.synth.handle_note_choke_event(event),
             Some(CoreEventSpace::ParamValue(event)) => {
@@ -94,7 +106,7 @@ impl<'a> SchoffhauzerSynthAudioProcessor<'a> {
     }
 }
 
-impl<'a> PluginAudioProcessor<'a, SchoffhauzerSynthShared, SchoffhauzerSynthPluginMainThread<'a>>
+impl<'a> PluginAudioProcessor<'a, SchoffhauzerSynthShared<'a>, SchoffhauzerSynthPluginMainThread<'a>>
     for SchoffhauzerSynthAudioProcessor<'a>
 {
     fn activate(
@@ -103,6 +115,9 @@ impl<'a> PluginAudioProcessor<'a, SchoffhauzerSynthShared, SchoffhauzerSynthPlug
         shared: &'a SchoffhauzerSynthShared,
         audio_config: PluginAudioConfiguration,
     ) -> Result<Self, PluginError> {
+        shared.info(c"test");
+        shared.error(c"teste");
+        spawn_remote_thread(shared);
         Ok(Self {
             shared,
             synth: PolySynth::new(audio_config.sample_rate as f32),
@@ -158,17 +173,36 @@ impl<'a> PluginAudioProcessor<'a, SchoffhauzerSynthShared, SchoffhauzerSynthPlug
     }
 }
 
-pub struct SchoffhauzerSynthShared {
+pub struct SchoffhauzerSynthShared<'a> {
+    host: HostSharedHandle<'a>,
     params: SchoffhauzerSynthPluginParams,
+    logger: Option<HostLog>,
 }
 
-impl PluginShared<'_> for SchoffhauzerSynthShared {}
+impl SchoffhauzerSynthShared<'_> {
+    fn log(&self, severity: LogSeverity, message: &CStr) {
+        if let Some(logger) = &self.logger {
+            logger.log(&self.host, severity, message);
+        }
+    }
+
+    pymeta! {
+        $for severity in ["Debug", "Info", "Warning", "Error", "Fatal"]:{
+            #[allow(unused)]
+            fn $severity.lower()$(&self, message: &CStr) {
+                self.log(LogSeverity::$severity$, message);
+            }
+        }
+    }
+}
+
+impl<'a> PluginShared<'a> for SchoffhauzerSynthShared<'a> {}
 
 pub struct SchoffhauzerSynthPluginMainThread<'a> {
-    shared: &'a SchoffhauzerSynthShared,
+    shared: &'a SchoffhauzerSynthShared<'a>,
 }
 
-impl<'a> PluginMainThread<'a, SchoffhauzerSynthShared> for SchoffhauzerSynthPluginMainThread<'a> {}
+impl<'a> PluginMainThread<'a, SchoffhauzerSynthShared<'a>> for SchoffhauzerSynthPluginMainThread<'a> {}
 
 impl<'a> PluginAudioPortsImpl for SchoffhauzerSynthPluginMainThread<'a> {
     fn count(&mut self, is_input: bool) -> u32 {
