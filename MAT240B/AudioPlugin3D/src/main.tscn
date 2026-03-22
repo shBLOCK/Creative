@@ -1,0 +1,233 @@
+[gd_scene format=3 uid="uid://dbp1uqger6v7w"]
+
+[ext_resource type="Script" uid="uid://bocj6c57yg083" path="res://src/main.gd" id="1_eewff"]
+[ext_resource type="Script" uid="uid://plo6t65sngsh" path="res://src/core/viewport3d_marker.gd" id="2_5q4o7"]
+[ext_resource type="Script" uid="uid://b358i50atvbn5" path="res://src/vp1.gd" id="2_kmhfv"]
+[ext_resource type="Script" uid="uid://cqccw15ahj2sg" path="res://src/core/viewport3d_camera.gd" id="3_3cfgd"]
+[ext_resource type="PackedScene" uid="uid://bp8ph6qfsnpxw" path="res://src/knob.tscn" id="4_fyndt"]
+[ext_resource type="Script" uid="uid://bbvchx42mrbtj" path="res://src/core/remote_real_transform.gd" id="5_fyndt"]
+[ext_resource type="Script" uid="uid://c6vn8xicikjhx" path="res://src/knobs.gd" id="5_rlaii"]
+[ext_resource type="Texture2D" uid="uid://b1dounag2tt1o" path="res://assets/diamond_pickaxe.png" id="7_5mrjc"]
+[ext_resource type="Script" uid="uid://dqypbqt1d2pxy" path="res://src/pickaxe.gd" id="8_kf8lf"]
+
+[sub_resource type="Environment" id="Environment_eewff"]
+background_mode = 1
+background_color = Color(1.353256, 1.353256, 1.353256, 1)
+ambient_light_source = 2
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 0.4
+tonemap_mode = 3
+ssao_enabled = true
+glow_enabled = true
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_fyndt"]
+frequency = 0.0071
+metadata/_preview_in_3d_space_ = true
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_kmhfv"]
+noise = SubResource("FastNoiseLite_fyndt")
+as_normal_map = true
+bump_strength = 4.3
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rlaii"]
+albedo_color = Color(0.94823414, 0.86825186, 0.7548852, 1)
+normal_enabled = true
+normal_scale = 2.53
+normal_texture = SubResource("NoiseTexture2D_kmhfv")
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_5mrjc"]
+size = Vector3(1.3459473, 1.3167725, 0.6069336)
+
+[node name="Main" type="Node" unique_id=1974504170]
+script = ExtResource("1_eewff")
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="." unique_id=30909627]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="SubViewportContainer" unique_id=928840789]
+transparent_bg = true
+handle_input_locally = false
+msaa_3d = 2
+screen_space_aa = 2
+physics_object_picking = true
+size = Vector2i(850, 1150)
+render_target_update_mode = 4
+script = ExtResource("2_kmhfv")
+
+[node name="Viewport" type="Marker3D" parent="SubViewportContainer/SubViewport" unique_id=438356993]
+unique_name_in_owner = true
+script = ExtResource("2_5q4o7")
+metadata/_custom_type_script = "uid://plo6t65sngsh"
+
+[node name="Camera" type="Camera3D" parent="SubViewportContainer/SubViewport" unique_id=1246918054]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.1187773)
+current = true
+script = ExtResource("3_3cfgd")
+real_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 12.55, 2)
+metadata/_custom_type_script = "uid://cqccw15ahj2sg"
+
+[node name="MouseRay" type="RayCast3D" parent="SubViewportContainer/SubViewport" unique_id=1080851855]
+unique_name_in_owner = true
+collide_with_areas = true
+collide_with_bodies = false
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="SubViewportContainer/SubViewport" unique_id=2048543497]
+environment = SubResource("Environment_eewff")
+
+[node name="Root" type="Node3D" parent="SubViewportContainer/SubViewport" unique_id=1223574817]
+unique_name_in_owner = true
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0, 0, 0)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="SubViewportContainer/SubViewport/Root" unique_id=1420066481]
+transform = Transform3D(0.85462976, 0.12893133, -0.50297546, 0.02596462, 0.9568572, 0.28939605, 0.5185879, -0.26038593, 0.814411, 0, 0, 0)
+light_energy = 0.5
+
+[node name="Panel" type="Node3D" parent="SubViewportContainer/SubViewport/Root" unique_id=469031015]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.9212971, 0.20254016, 0)
+
+[node name="CSGBox3D" type="CSGBox3D" parent="SubViewportContainer/SubViewport/Root/Panel" unique_id=605438728]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.9517733, -0.020166337, 0.5)
+size = Vector3(11.904547, 17.498268, 0.99)
+material = SubResource("StandardMaterial3D_rlaii")
+
+[node name="Label3D" type="Label3D" parent="SubViewportContainer/SubViewport/Root/Panel" unique_id=1840656629]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.9517733, 8.1719475, 1.0528202)
+pixel_size = 0.01
+text = "Synthesizer Control"
+font_size = 64
+
+[node name="Knobs" type="Node3D" parent="SubViewportContainer/SubViewport/Root/Panel" unique_id=868683434]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
+script = ExtResource("5_rlaii")
+
+[node name="Volume" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=160735957 instance=ExtResource("4_fyndt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 5, 0)
+min_value = -60.0
+max_value = 12.0
+
+[node name="Attack" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=803821980 instance=ExtResource("4_fyndt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 5, 0)
+target_value = 0.1
+max_value = 5.0
+
+[node name="AttackCurve" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=1079608507 instance=ExtResource("4_fyndt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 5, 0)
+target_value = 0.7
+min_value = 0.2
+max_value = 5.0
+
+[node name="Decay" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=1808040426 instance=ExtResource("4_fyndt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1, 0)
+target_value = 0.3
+max_value = 5.0
+
+[node name="DecayCurve" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=1350092479 instance=ExtResource("4_fyndt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1, 0)
+target_value = 0.7
+min_value = 0.2
+max_value = 5.0
+
+[node name="Sustain" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=57088787 instance=ExtResource("4_fyndt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, -3, 0)
+target_value = 0.5
+max_value = 2.0
+
+[node name="Release" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=735287168 instance=ExtResource("4_fyndt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, -7, 0)
+target_value = 0.3
+max_value = 5.0
+
+[node name="ReleaseCurve" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=177502770 instance=ExtResource("4_fyndt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, -7, 0)
+target_value = 0.7
+min_value = 0.2
+max_value = 5.0
+
+[node name="HF Rolloff" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=865037624 instance=ExtResource("4_fyndt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, -7, 0)
+target_value = 1.0
+
+[node name="Label3D" type="Label3D" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=2029822865]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 7, 0)
+pixel_size = 0.01
+text = "Gain"
+font_size = 64
+
+[node name="Label3D9" type="Label3D" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=1290017445]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, -5, 0)
+pixel_size = 0.01
+text = "HF Rolloff"
+font_size = 64
+
+[node name="Label3D2" type="Label3D" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=1936022939]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 7, 0)
+pixel_size = 0.01
+text = "Attack"
+font_size = 64
+
+[node name="Label3D3" type="Label3D" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=1003611386]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 7, 0)
+pixel_size = 0.01
+text = "Curve"
+font_size = 64
+
+[node name="Label3D4" type="Label3D" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=425404516]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 3, 0)
+pixel_size = 0.01
+text = "Decay"
+font_size = 64
+
+[node name="Label3D5" type="Label3D" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=334043945]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 3, 0)
+pixel_size = 0.01
+text = "Curve"
+font_size = 64
+
+[node name="Label3D8" type="Label3D" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=853136948]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, -1, 0)
+pixel_size = 0.01
+text = "Sustain"
+font_size = 64
+
+[node name="Label3D6" type="Label3D" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=1330074284]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, -5, 0)
+pixel_size = 0.01
+text = "Release"
+font_size = 64
+
+[node name="Label3D7" type="Label3D" parent="SubViewportContainer/SubViewport/Root/Panel/Knobs" unique_id=591414909]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, -5, 0)
+pixel_size = 0.01
+text = "Curve"
+font_size = 64
+
+[node name="Sprite3D" type="Sprite3D" parent="SubViewportContainer/SubViewport/Root/Panel" unique_id=625896391]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, 1.01)
+pixel_size = 0.1
+texture_filter = 0
+texture = ExtResource("7_5mrjc")
+script = ExtResource("8_kf8lf")
+
+[node name="Area3D" type="Area3D" parent="SubViewportContainer/SubViewport/Root/Panel/Sprite3D" unique_id=359343739]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SubViewportContainer/SubViewport/Root/Panel/Sprite3D/Area3D" unique_id=294649107]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.020873785, -0.05303955, -0.19653308)
+shape = SubResource("BoxShape3D_5mrjc")
+
+[node name="RealWorld" type="Node" parent="." unique_id=1523792042]
+
+[node name="Camera" type="Marker3D" parent="RealWorld" unique_id=1300195488]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 12.55, 2)
+
+[node name="Eye" type="Marker3D" parent="RealWorld/Camera" unique_id=221805310]
+gizmo_extents = 1.0
+script = ExtResource("5_fyndt")
+path = NodePath("../../../SubViewportContainer/SubViewport/Camera")
+metadata/_custom_type_script = "uid://bbvchx42mrbtj"
+
+[connection signal="input_event" from="SubViewportContainer/SubViewport/Root/Panel/Sprite3D/Area3D" to="SubViewportContainer/SubViewport/Root/Panel/Sprite3D" method="_on_area_3d_input_event"]
