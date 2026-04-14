@@ -1,7 +1,12 @@
 using UnityEngine;
 
 public class Health : MonoBehaviour {
-    public float health { get; private set; } = 10f;
+    public float initialHealth = 10f;
+    public float health;
+
+    private void Awake() {
+        health = initialHealth;
+    }
     
     public void Damage(float amount) {
         health -= amount;
