@@ -10,6 +10,8 @@ public class EnemyController : MonoBehaviour {
     [SerializeField] private float patrolRadius = 20f;
     [SerializeField] private float aggroRadius = 10f;
     [SerializeField] private float attackRadius = 3f;
+    
+    [SerializeField] private GameObject deathParticle;
 
     private Animator _animator;
     private NavMeshAgent _navMeshAgent;
@@ -39,6 +41,8 @@ public class EnemyController : MonoBehaviour {
         if (_state != State.Dead && _health.health <= 0) {
             _state = State.Dead;
             _animator.SetTrigger("Death");
+            _aggroTarget.GetComponent<PlayerController>().killCount++;
+            deathParticle.SetActive(true);
         }
         
         if (_state != State.Dead) {
@@ -58,6 +62,13 @@ public class EnemyController : MonoBehaviour {
                 _navMeshAgent.SetDestination(_aggroTarget.transform.position);
                 if ((transform.position - _aggroTarget.transform.position).magnitude <= attackRadius) {
                     _animator.SetTrigger("Attack");
+                }
+
+                if (_aggroTarget.GetComponent<Health>().health <= 0) {
+                    _animator.ResetTrigger("Attack");
+                    _aggroTarget = null;
+                    _state = State.Patrol;
+                    _patrolCoroutine = StartCoroutine(PatrolCoroutine());
                 }
 
                 break;
